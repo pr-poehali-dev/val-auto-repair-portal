@@ -1,19 +1,72 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('home');
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedCarType, setSelectedCarType] = useState('');
+  const [estimatedPrice, setEstimatedPrice] = useState(0);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
     const element = document.getElementById(sectionId);
     element?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  const servicePrices: Record<string, Record<string, number>> = {
+    diagnostics: { economy: 1500, comfort: 2000, premium: 2500 },
+    engine: { economy: 15000, comfort: 25000, premium: 40000 },
+    brakes: { economy: 3000, comfort: 5000, premium: 8000 },
+    suspension: { economy: 5000, comfort: 8000, premium: 12000 },
+    electric: { economy: 3000, comfort: 5000, premium: 7000 },
+    oil: { economy: 2000, comfort: 3000, premium: 5000 },
+    ac: { economy: 2500, comfort: 3500, premium: 5000 },
+    parts: { economy: 0, comfort: 0, premium: 0 },
+    express: { economy: 1000, comfort: 1500, premium: 2000 },
+  };
+
+  useEffect(() => {
+    if (selectedService && selectedCarType) {
+      const price = servicePrices[selectedService]?.[selectedCarType] || 0;
+      setEstimatedPrice(price);
+    } else {
+      setEstimatedPrice(0);
+    }
+  }, [selectedService, selectedCarType]);
+
+  useEffect(() => {
+    if (mapRef.current && typeof window !== 'undefined' && (window as any).ymaps) {
+      (window as any).ymaps.ready(() => {
+        const map = new (window as any).ymaps.Map(mapRef.current, {
+          center: [55.751244, 37.618423],
+          zoom: 16,
+          controls: ['zoomControl', 'fullscreenControl'],
+        });
+
+        const placemark = new (window as any).ymaps.Placemark(
+          [55.751244, 37.618423],
+          {
+            balloonContent: '<strong>VAL-AUTO</strong><br/>Автосервис и магазин запчастей',
+          },
+          {
+            preset: 'islands#autoCircleIcon',
+            iconColor: '#F97316',
+          }
+        );
+
+        map.geoObjects.add(placemark);
+      });
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,7 +78,7 @@ const Index = () => {
               <span className="text-2xl font-heading font-bold text-secondary-foreground">VAL-AUTO</span>
             </div>
             <div className="hidden md:flex gap-6">
-              {['home', 'about', 'services', 'reviews', 'booking', 'contacts'].map((section) => (
+              {['home', 'about', 'services', 'calculator', 'reviews', 'booking', 'contacts'].map((section) => (
                 <button
                   key={section}
                   onClick={() => scrollToSection(section)}
@@ -36,6 +89,7 @@ const Index = () => {
                   {section === 'home' && 'Главная'}
                   {section === 'about' && 'О компании'}
                   {section === 'services' && 'Услуги'}
+                  {section === 'calculator' && 'Калькулятор'}
                   {section === 'reviews' && 'Отзывы'}
                   {section === 'booking' && 'Запись'}
                   {section === 'contacts' && 'Контакты'}
@@ -152,6 +206,79 @@ const Index = () => {
         </div>
       </section>
 
+      <section id="calculator" className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-4xl font-heading font-bold text-center mb-4">Калькулятор стоимости</h2>
+            <p className="text-center text-muted-foreground mb-12">
+              Рассчитайте примерную стоимость ремонта вашего автомобиля
+            </p>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Тип автомобиля</label>
+                    <Select value={selectedCarType} onValueChange={setSelectedCarType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите тип автомобиля" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="economy">Эконом класс (Lada, Renault Logan)</SelectItem>
+                        <SelectItem value="comfort">Средний класс (Hyundai, Toyota, VW)</SelectItem>
+                        <SelectItem value="premium">Премиум класс (BMW, Mercedes, Audi)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Услуга</label>
+                    <Select value={selectedService} onValueChange={setSelectedService}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите услугу" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="diagnostics">Диагностика</SelectItem>
+                        <SelectItem value="engine">Ремонт двигателя</SelectItem>
+                        <SelectItem value="brakes">Тормозная система</SelectItem>
+                        <SelectItem value="suspension">Подвеска</SelectItem>
+                        <SelectItem value="electric">Электрика</SelectItem>
+                        <SelectItem value="oil">Замена масла</SelectItem>
+                        <SelectItem value="ac">Кондиционер</SelectItem>
+                        <SelectItem value="express">Экспресс-сервис</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {estimatedPrice > 0 && (
+                    <div className="mt-6 p-6 bg-primary/10 rounded-lg border-2 border-primary animate-fade-in">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Примерная стоимость работ:</p>
+                          <p className="text-3xl font-heading font-bold text-primary">
+                            от {estimatedPrice.toLocaleString('ru-RU')} ₽
+                          </p>
+                        </div>
+                        <Icon name="Calculator" className="text-primary" size={48} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3">
+                        * Точная стоимость рассчитывается после диагностики. Цена не включает запчасти.
+                      </p>
+                    </div>
+                  )}
+                  <Button
+                    onClick={() => scrollToSection('booking')}
+                    className="w-full"
+                    size="lg"
+                    disabled={!estimatedPrice}
+                  >
+                    <Icon name="Calendar" className="mr-2" size={20} />
+                    Записаться на эту услугу
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
       <section id="reviews" className="py-20">
         <div className="container mx-auto px-4">
           <h2 className="text-4xl font-heading font-bold text-center mb-12">Отзывы клиентов</h2>
@@ -242,7 +369,20 @@ const Index = () => {
                     <label className="block text-sm font-medium mb-2">Комментарий</label>
                     <Textarea placeholder="Опишите проблему или дополнительные пожелания" rows={4} />
                   </div>
-                  <Button type="submit" className="w-full" size="lg">
+                  <div className="flex items-start space-x-2 p-4 bg-muted/50 rounded-lg">
+                    <Checkbox
+                      id="terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                    />
+                    <Label htmlFor="terms" className="text-sm leading-relaxed cursor-pointer">
+                      Я согласен на обработку персональных данных и принимаю условия{' '}
+                      <a href="#" className="text-primary hover:underline">
+                        политики конфиденциальности
+                      </a>
+                    </Label>
+                  </div>
+                  <Button type="submit" className="w-full" size="lg" disabled={!agreedToTerms}>
                     <Icon name="Send" className="mr-2" size={20} />
                     Отправить заявку
                   </Button>
@@ -309,6 +449,16 @@ const Index = () => {
                     Экспресс-сервис работает без выходных
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="max-w-4xl mx-auto mt-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="font-heading">Как нас найти</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div ref={mapRef} style={{ width: '100%', height: '400px' }} className="rounded-lg overflow-hidden"></div>
               </CardContent>
             </Card>
           </div>
